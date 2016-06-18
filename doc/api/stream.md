@@ -314,9 +314,10 @@ reader.unpipe(writer);
 
 ##### writable.cork()
 
-The `writable.cork()` method forces all written data to be buffered in memory.
-The buffered data will be flushed when either the [`stream.uncork()`][] or
-[`stream.end()`][stream-end] methods are called.
+Anytime `writable.cork()` is called, it will force all written data to be
+buffered in memory.  To flush the data, either call [`stream.uncork()`][]
+*as many times* as you called `writable.cork()` or call
+[`stream.end()`][stream-end] once.
 
 The primary intent of `writable.cork()` is to avoid a situation where writing
 many small chunks of data to a stream do not cause an backup in the internal
@@ -359,24 +360,8 @@ The `writable.setDefaultEncoding()` method sets the default `encoding` for a
 
 ##### writable.uncork()
 
-The `writable.uncork()` method flushes all data buffered since
-[`stream.cork()`][] was called.
-
-When using `writable.cork()` and `writable.uncork()` to manage the buffering
-of writes to a stream, it is recommended that calls to `writable.uncork()` be
-deferred using `process.nextTick()`. Doing so allows batching of all
-`writable.write()` calls that occur within a given Node.js event loop phase.
-
-```js
-stream.cork();
-stream.write('some ');
-stream.write('data ');
-process.nextTick(() => stream.uncork());
-```
-
-If the `writable.cork()` method is called multiple times on a stream, the same
-number of calls to `writable.uncork()` must be called to flush the buffered
-data.
+The `writable.uncork()` method flushes all data buffered only if it is called
+as many times as [`stream.cork()`][] was called.
 
 ```
 stream.cork();
@@ -388,6 +373,18 @@ process.nextTick(() => {
   // The data will not be flushed until uncork() is called a second time.
   stream.uncork();
 });
+```
+
+When using `writable.cork()` and `writable.uncork()` to manage the buffering
+of writes to a stream, it is recommended that calls to `writable.uncork()` be
+deferred using `process.nextTick()`. Doing so allows batching of all
+`writable.write()` calls that occur within a given Node.js event loop phase.
+
+```js
+stream.cork();
+stream.write('some ');
+stream.write('data ');
+process.nextTick(() => stream.uncork());
 ```
 
 ##### writable.write(chunk[, encoding][, callback])
@@ -1579,7 +1576,7 @@ For Duplex streams, `objectMode` can be set exclusively for either the Readable
 or Writable side using the `readableObjectMode` and `writableObjectMode` options
 respectively.
 
-In the following example, for instance, a new Transform stream (which is a 
+In the following example, for instance, a new Transform stream (which is a
 type of [Duplex][] stream) is created that has an object mode Writable side
 that accepts JavaScript numbers that are converted to hexidecimal strings on
 the Readable side.
